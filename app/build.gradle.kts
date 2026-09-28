@@ -7,6 +7,16 @@ android {
     namespace = "com.zybergo.browser"
     compileSdk = 34
 
+    // Keep Java and Kotlin bytecode targets consistent in CI.
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
     defaultConfig {
         applicationId = "com.zybergo.browser"
         minSdk = 24
