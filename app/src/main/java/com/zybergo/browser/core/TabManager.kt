@@ -42,7 +42,7 @@ class TabManager(
 
     fun closeTab(tabId: String) {
         val tab = tabs.find { it.id == tabId } ?: return
-        if (tab.webView === pooledWebView?.also { }) {
+        if (tab.webView === pooledWebView) {
             tab.captureStateAndDestroy()
         }
         tabs.remove(tab)
