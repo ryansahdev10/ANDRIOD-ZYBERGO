@@ -3,34 +3,31 @@ package com.zybergo.browser.ui
 import android.app.Activity
 import android.graphics.Color
 import android.os.Bundle
+import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.TextView
 import com.zybergo.browser.core.ThemeManager
 
-/**
- * Minimal, dependency-free theme designer: one slider trio (R/G/B) per
- * color role, built with plain Android widgets — no color-picker library
- * dependency, keeping the "no extra libs" RAM discipline from the rest of
- * the app. Swap in a nicer picker widget later without touching ThemeManager.
- */
+/** A small dependency-free RGB theme editor. */
 class ThemeDesignerActivity : Activity() {
-
     private lateinit var themeManager: ThemeManager
 
-    private var primary = Color.rgb(60, 60, 90)
-    private var background = Color.rgb(20, 20, 35)
-    private var surface = Color.rgb(35, 35, 65)
-    private var textPrimary = Color.WHITE
-    private var accent = Color.rgb(108, 99, 255)
+    private var primaryColor = Color.rgb(60, 60, 90)
+    private var backgroundColor = Color.rgb(20, 20, 35)
+    private var surfaceColor = Color.rgb(35, 35, 65)
+    private var textPrimaryColor = Color.WHITE
+    private var accentColor = Color.rgb(108, 99, 255)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         themeManager = ThemeManager(this)
 
-        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(32, 32, 32, 32) }
-
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(32, 32, 32, 32)
+        }
         val nameInput = EditText(this).apply { hint = "Theme name" }
         root.addView(nameInput)
 
@@ -42,63 +39,72 @@ class ThemeDesignerActivity : Activity() {
         root.addView(preview)
 
         fun refreshPreview() {
-            preview.setBackgroundColor(background)
-            preview.setTextColor(textPrimary)
+            preview.setBackgroundColor(backgroundColor)
+            preview.setTextColor(textPrimaryColor)
         }
         refreshPreview()
 
-        // One RGB slider group per role, wired generically.
-        val roles = listOf(
-            "Primary" to { c: Int -> primary = c },
-            "Background" to { c: Int -> background = c; refreshPreview() },
-            "Surface" to { c: Int -> surface = c },
-            "Text" to { c: Int -> textPrimary = c; refreshPreview() },
-            "Accent" to { c: Int -> accent = c }
+        val roles: List<Pair<String, (Int) -> Unit>> = listOf(
+            "Primary" to { color: Int -> primaryColor = color },
+            "Background" to { color: Int -> backgroundColor = color; refreshPreview() },
+            "Surface" to { color: Int -> surfaceColor = color },
+            "Text" to { color: Int -> textPrimaryColor = color; refreshPreview() },
+            "Accent" to { color: Int -> accentColor = color }
         )
 
         roles.forEach { (label, onChange) ->
             root.addView(TextView(this).apply { text = label })
-            var r = 128; var g = 128; var b = 128
-            listOf("R", "G", "B").forEachIndexed { i, channel ->
-                val seek = SeekBar(this).apply {
+            var red = 128
+            var green = 128
+            var blue = 128
+            repeat(3) { channel ->
+                root.addView(SeekBar(this).apply {
                     max = 255
                     progress = 128
                     setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                        override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
-                            when (i) { 0 -> r = progress; 1 -> g = progress; 2 -> b = progress }
-                            onChange(Color.rgb(r, g, b))
+                        override fun onProgressChanged(
+                            seekBar: SeekBar?, progress: Int, fromUser: Boolean
+                        ) {
+                            when (channel) {
+                                0 -> red = progress
+                                1 -> green = progress
+                                else -> blue = progress
+                            }
+                            onChange(Color.rgb(red, green, blue))
                         }
-                        override fun onStartTrackingTouch(sb: SeekBar?) {}
-                        override fun onStopTrackingTouch(sb: SeekBar?) {}
+
+                        override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
+                        override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
                     })
-                }
-                root.addView(seek)
+                })
             }
         }
 
-        val saveButton = android.widget.Button(this).apply {
+        root.addView(Button(this).apply {
             text = "Save Theme"
             setOnClickListener {
-                val name = nameInput.text.toString().ifBlank { "My Theme" }
+                val name = nameInput.text.toString().trim().ifEmpty { "My Theme" }
+                // Pass the five ARGB values explicitly. Do not pass Android Drawable
+                // values here: ThemeManager stores colors as Int ARGB values.
                 themeManager.saveCustomTheme(
-                    name = name,
-                    primary = primary,
-                    background = background,
-                    surface = surface,
-                    textPrimary = textPrimary,
-                    accent = accent,
-                    isDark = isColorDark(background)
+                    name,
+                    primaryColor,
+                    backgroundColor,
+                    surfaceColor,
+                    textPrimaryColor,
+                    accentColor,
+                    isColorDark(backgroundColor)
                 )
                 finish()
             }
-        }
-        root.addView(saveButton)
-
+        })
         setContentView(root)
     }
 
     private fun isColorDark(color: Int): Boolean {
-        val luminance = (0.299 * Color.red(color) + 0.587 * Color.green(color) + 0.114 * Color.blue(color))
-        return luminance < 128
+        val luminance = 0.299 * Color.red(color) +
+            0.587 * Color.green(color) +
+            0.114 * Color.blue(color)
+        return luminance < 128.0
     }
 }
